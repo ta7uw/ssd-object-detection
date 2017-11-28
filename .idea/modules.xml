@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/ChainerCV-SSD.iml" filepath="$PROJECT_DIR$/.idea/ChainerCV-SSD.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../SSD-object-detection/.idea/SSD-object-detection.iml" filepath="$PROJECT_DIR$/../SSD-object-detection/.idea/SSD-object-detection.iml" />
     </modules>
   </component>
 </project>

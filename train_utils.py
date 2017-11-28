@@ -103,7 +103,7 @@ class Transform(object):
 
 
 def train(train_data, val_data, label_names,
-          iteration, lr, step_points,
+          lr, epoch, step_points,
           batchsize, gpu, out, val_iteration,
           log_iteration, loaderjob,
           resume):
@@ -136,12 +136,15 @@ def train(train_data, val_data, label_names,
 
     if loaderjob <= 0:
         train_iter = chainer.iterators.SerialIterator(train_data, batchsize)
+        val_iter = chainer.iterators.SerialIterator(
+            val_data, batchsize, repeat=False, shuffle=False)
     else:
         train_iter = chainer.iterators.MultiprocessIterator(
-            train_data, batchsize, n_processes=min((loaderjob, batchsize)))
-
-    val_iter = chainer.iterators.SerialIterator(
-        val_data, batchsize, repeat=False, shuffle=False)
+            train_data, batchsize, n_processes=loaderjob
+        )
+        val_iter = chainer.iterators.MultiprocessIterator(
+            val_data, batchsize, n_processes=loaderjob, repeat=False, shuffle=False
+        )
 
     # initial lr is set by ExponentialShift
     optimizer = chainer.optimizers.MomentumSGD()
@@ -154,19 +157,21 @@ def train(train_data, val_data, label_names,
 
     # Using Trainer.Trainer is the class that summarize what is necessary for training
     updater = training.StandardUpdater(train_iter, optimizer, device=gpu)
-    trainer = training.Trainer(updater, (iteration, 'iteration'), out)
+    trainer = training.Trainer(updater, (epoch, 'epoch'), out)
     trainer.extend(
         extensions.ExponentialShift('lr', 0.1, init=lr),
         trigger=triggers.ManualScheduleTrigger(step_points, 'iteration'))
 
-    val_interval = (val_iteration, 'iteration')
+    val_interval = val_iteration, 'iteration'
+    log_interval = log_iteration, 'iteration'
+
     trainer.extend(
         DetectionVOCEvaluator(
             val_iter, model, use_07_metric=True,
             label_names=label_names),
         trigger=val_interval)
 
-    log_interval = log_iteration, 'iteration'
+
     trainer.extend(extensions.LogReport(trigger=log_interval))
     trainer.extend(extensions.observe_lr(), trigger=log_interval)
     trainer.extend(extensions.PrintReport(
@@ -179,10 +184,11 @@ def train(train_data, val_data, label_names,
         extensions.PlotReport(
             ['main/accuracy', 'validation/main/accuracy'],
             x_key='epoch', file_name='accuracy.png'))
+    trainer.extend(extensions.dump_graph("main/loss"))
 
     trainer.extend(extensions.snapshot(), trigger=val_interval)
     trainer.extend(
-        extensions.snapshot_object(model, 'model_iter_{.updater.iteration}'),
+        extensions.snapshot_object(model, 'model_epoch_{.updater.epoch}'),
         trigger=val_interval)
 
     if resume:

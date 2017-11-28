@@ -27,7 +27,7 @@ detection_label_names = (
     "oolong tea",
     "orange juice",
     "calpis",
-    "green tea",
+
 )
 
 voc_semantic_segmentation_label_names = (('background',) +
